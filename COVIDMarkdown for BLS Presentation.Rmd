@@ -1,0 +1,1168 @@
+---
+title: "COVID County Data Analyses: By Eric Stokan"
+output:
+  pdf_document: default
+  html_document: default
+Author: Eric Stokan
+---
+
+# Welcome to my COVID Analyses
+
+This document lays the foundation for the analysis of governmental responses to COVID-19 at the county level. The data for this project are derived from Johns Hopkins at the County level and covidtracking.com at the state level.  This document was created using a set of libraries that are not displayed here, but can be provided.  
+
+```{r Change buf size, include=FALSE}
+options(tinytex.verbose = TRUE)
+bufsize=900000
+```
+
+```{r Set my WD, include=FALSE}
+setwd("C:/Users/estokan/Desktop/COVID/COVID")
+```
+
+
+```{r Libraries, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(stringr) #For dealing with string variables
+library(lubridate) #For dealing with dates
+library(httr) #For APIs 
+require(jsonlite) # For APIs
+library(zoo) #This does time series, and helps with missing values in future
+library(xts) #Set time series and manage it
+library(cowplot) #Let's me display side-by-side graphs
+library(ltm) #This is for IRT Measures
+library(psych) #This is a suite of tools for dat analysis and summaries
+library(usmap) #Mapping
+library(viridis) #mapping
+library(maps) #For mapping
+library(mapproj) #For mapping
+#tinytex::install_tinytex()
+
+```
+
+# Data source
+
+The data is coming from Johns Hopkins University using their API.  To use it, you must register with Github and download directly from them.  I download each of their data from March 23rd to the current date, use *Rbind* to combine all of the data and then drop the individual data sets.
+
+```{r DataFromCOVTrack, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+
+state <-GET("https://covidtracking.com/api/states/daily")
+```
+
+```{r DataFromHopkins, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+
+#Want to read data
+county323 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-23-2020.csv"))
+county324 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-24-2020.csv"))
+county325 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-25-2020.csv"))
+county326 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-26-2020.csv"))
+county327 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-27-2020.csv"))
+county328 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-28-2020.csv"))
+county329 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-29-2020.csv"))
+county330 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-30-2020.csv"))
+county331 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/03-31-2020.csv"))
+county401 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-01-2020.csv"))
+county402 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-02-2020.csv"))
+county403 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-03-2020.csv"))
+county404 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-04-2020.csv"))
+county405 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-05-2020.csv"))
+county406 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-06-2020.csv"))
+county407 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-07-2020.csv"))
+county408 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-08-2020.csv"))
+county409 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-09-2020.csv"))
+county410 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-10-2020.csv"))
+county411 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-11-2020.csv"))
+county412 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-12-2020.csv"))
+county413 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-13-2020.csv"))
+county414 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-14-2020.csv"))
+county415 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-15-2020.csv"))
+county416 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-16-2020.csv"))
+county417 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-17-2020.csv"))
+county418 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-18-2020.csv"))
+county419 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-19-2020.csv"))
+county420 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-20-2020.csv"))
+county421 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-21-2020.csv"))
+county422 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-22-2020.csv"))
+county423 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-23-2020.csv"))
+county424 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-24-2020.csv"))
+county425 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-25-2020.csv"))
+county426 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-26-2020.csv"))
+county427 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-27-2020.csv"))
+county428 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-28-2020.csv"))
+county429 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-29-2020.csv"))
+county430 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/04-30-2020.csv"))
+county501 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-01-2020.csv"))
+county502 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-02-2020.csv"))
+county503 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-03-2020.csv"))
+county504 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-04-2020.csv"))
+county505 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-05-2020.csv"))
+county506 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-06-2020.csv"))
+county507 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-07-2020.csv"))
+county508 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-08-2020.csv"))
+county509 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-09-2020.csv"))
+county510 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-10-2020.csv"))
+county511 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-11-2020.csv"))
+county512 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-12-2020.csv"))
+county513 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-13-2020.csv"))
+county514 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-14-2020.csv"))
+county515 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-15-2020.csv"))
+county516 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-16-2020.csv"))
+county517 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-17-2020.csv"))
+county518 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-18-2020.csv"))
+county519 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-19-2020.csv"))
+county520 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-20-2020.csv"))
+county521 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-21-2020.csv"))
+county522 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-22-2020.csv"))
+county523 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-23-2020.csv"))
+county524 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-24-2020.csv"))
+county525 <- read.csv(url("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/05-25-2020.csv"))
+
+```
+
+```{r Merge and Delete, message=FALSE, warning=FALSE}
+
+AllCounties<-rbind(county323, county324, county325, county326, county327, county328, 
+                   county329, county330, county331, county401, county402, county403, 
+                   county404, county405, county406, county407, county408, county409, 
+                   county410, county411, county412, county413, county414, county415, 
+                   county416, county417, county418, county419, county420, county421, 
+                   county422, county423, county424, county425, county426, county427, 
+                   county428, county429, county430, county501, county502, county503, 
+                   county504, county505, county506, county507, county508, county509,
+                   county510, county511, county512, county513, county515, county516,
+                   county517, county518, county519, county520, county521, county521,
+                   county522, county523, county524)
+
+#Keep only US Cases
+US<-AllCounties %>%
+  filter(Country_Region=="US")
+
+#Remove individual sets
+rm(list="county323", "county324", "county325", "county326", "county327", "county328", 
+        "county329", "county330", "county331", "county401", "county402", "county403", 
+        "county404", "county405", "county406", "county407", "county408", "county409", 
+        "county410", "county411", "county412", "county413", "county414", "county415", 
+        "county416", "county417", "county418", "county419", "county420", "county421", 
+        "county422", "county423", "county424", "county425", "county426", "county427", 
+        "county428", "county429", "county430", "county501", "county502", "county503", 
+        "county504", "county505", "county506", "county507", "county508", "county509",
+        "county510", "county511", "county512", "county513", "county514", "county515",
+        "county516", "county517", "county518", "county519", "county520", "county521",
+        "county522", "county523", "county524", "AllCounties")
+
+#Convert date
+US<-US %>%
+  mutate(Date= as_date(Last_Update))
+```
+
+# Create Variables
+The first thing I want to do behind the scenes is to create 5-day rolling averages for confirmed COVID cases, deaths, hospitalizations, and recoveries.  This helps take account of the fact that the quality of the reporting around the data can be variable.  This smooths out the distribution.  You can see in R how I do this using lags and leads. 
+
+```{r Create first set of variables, message=FALSE, warning=FALSE}
+US<-US %>%
+  mutate(logConfirm= log(Confirmed)) %>%
+  mutate(logDeath= log(Deaths), na.rm=TRUE) %>%
+  
+#Do 5-day rolling average for pos, neg, tests, totalTests, deaths. 
+#I need to group by state and county.
+ 
+   arrange(Province_State, Admin2, Date) %>%
+  group_by(Province_State, Admin2) %>%
+  mutate(posRoll= (lag(Confirmed, 1)+ lag(Confirmed, 2) + Confirmed + lead(Confirmed, 1) + 
+                     lead(Confirmed, 2))/5)%>%
+  mutate(recoverRoll= (lag(Recovered, 1)+ lag(Recovered, 2) + Recovered + lead(Recovered, 1) + 
+                         lead(Recovered, 2))/5)%>%
+  mutate(deathRoll= ((lag(Deaths, 1)+ lag(Deaths, 2) + Deaths + lead(Deaths, 1) + 
+                        lead(Deaths, 2))/5)/5)%>%
+  ungroup()
+```
+
+```{r Create Subsets, message=FALSE, warning=FALSE, include=FALSE}
+
+#Segment for MI
+MI<-US %>%
+  filter(Province_State=="Michigan")
+
+#Subset for metro-Detroit
+MetroDetroit<-MI %>%
+  filter(Admin2=="Detroit" | Admin2=="Wayne" | Admin2=="Washtenaw" | Admin2=="St. Clair"| 
+           Admin2=="Macomb"| Admin2=="Monroe"| Admin2=="Oakland"| Admin2=="Livingston")
+```
+
+# Inspect data
+
+I look at the first 20 observations of the US file, and then I inspect my MI variable names.
+
+```{r Basic Data, message=TRUE}
+#Inspect data
+head(US, n=20)
+
+#Variable names
+names(MI)
+```
+
+
+# Plotting Data for Exploration
+## Simple graph
+
+I create a set of simple graphics for Metro Detroit. Here I am using the *ggplot2* package in *tidyverse* and saving each graph to a variable.  I could also write it out using a *png* command to save it directly to my folder, but for purposes of this presentation I am not doing that. I'm a big fan of the **facet_wrap** command in R which creates separate graphics for each county here and I am using *geom_vline* to add the policy "stay at home" on March 23rd.
+
+```{r Create Plots, message=FALSE, warning=FALSE, include=FALSE}
+
+BaseConfirmed <-ggplot(MetroDetroit, aes(y= Confirmed, x=Date))+geom_smooth() + facet_wrap(~Admin2)+
+  labs(y= "Confirmed Cases", title="Confirmed Cases by County in Metro-Detroit: March 23rd-May 13th", 
+       caption= "Created by Eric Stokan, Datasource: Johns Hopkins COVID-19")+
+    geom_vline(xintercept=as.Date(MetroDetroit$Date[1]), color = "red")
+
+
+LogConfirmed <-ggplot(MetroDetroit, aes(y= logConfirm, x=Date))+geom_smooth() +facet_wrap(~Admin2)+
+  labs(y= "Confirmed Cases", title="Confirmed Cases by County in Metro-Detroit: March 23rd-May 13th", 
+       caption= "Created by Eric Stokan, Datasource: Johns Hopkins COVID-19")+
+  geom_vline(xintercept=as.Date(MetroDetroit$Date[1]), color = "red")
+
+
+RollingConfirmed <-ggplot(MetroDetroit, aes(y= posRoll, x=Date))+geom_smooth() +facet_wrap(~Admin2)+
+  labs(y= "Confirmed Cases", title="Confirmed Cases by County in Metro-Detroit: March 23rd-May 13th", 
+       caption= "Created by Eric Stokan, Datasource: Johns Hopkins COVID-19")+
+  geom_vline(xintercept=as.Date(MetroDetroit$Date[1]), color = "red")
+
+
+BaseDeaths <-ggplot(MetroDetroit, aes(y= Deaths, x=Date))+geom_smooth() + facet_wrap(~Admin2)+
+  labs(y= "Confirmed Cases", title="Confirmed Cases by County in Metro-Detroit: March 23rd-May 13th", 
+       caption= "Created by Eric Stokan, Datasource: Johns Hopkins COVID-19")+
+    geom_vline(xintercept=as.Date(MetroDetroit$Date[1]), color = "red")
+
+LogDeaths <-ggplot(MetroDetroit, aes(y= logDeath, x=Date))+geom_smooth() +facet_wrap(~Admin2)+
+  labs(y= "Logged Deaths", title="Logged Deaths by County in Metro-Detroit: March 23rd-May 13th", 
+       caption= "Created by Eric Stokan, Datasource: Johns Hopkins COVID-19")+
+    geom_vline(xintercept=as.Date(MetroDetroit$Date[1]), color = "red")
+
+```
+
+
+```{r Display line graphs, message=FALSE, warning=FALSE}
+BaseConfirmed
+LogConfirmed
+RollingConfirmed
+BaseDeaths
+LogDeaths
+
+```
+
+
+
+# More data
+Next, I add in the data from covidtracking.com because it has additional data that I am interested in.  
+
+```{r CovidTrack Data, message=FALSE, warning=FALSE, include=FALSE}
+
+#Covid tracking api
+#https://covidtracking.com/api/states/daily #I call this data in the first section.
+
+#Check names
+rawToChar(state$content)
+
+#Use JSON to extrat names
+state = fromJSON(rawToChar(state$content))
+```
+
+```{r CovidTrack Data checking, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Read in data
+statePop<- read.csv("StatePop.csv")
+stateMetro<-read.csv("StatesMetro.csv")
+stateFactors<-read.csv("StateFactors.csv")
+
+#Convert to date
+state<-state %>%
+  mutate(NewDate= as_date(dateChecked))
+
+#sort by state and date
+state<-state %>%
+  arrange(state, NewDate)
+
+#Join statepop and statehealth and policy factors
+state<-merge(state, statePop)
+state<-left_join(state, stateFactors)
+
+#Grab US State data
+us_states <- map_data("state")
+
+#sort by state and date
+state<-state %>%
+  arrange(state, NewDate)
+
+```
+
+
+# Many State Variables Including Policies
+
+As you can see, I have begun creating many variables in terms of policy responses here.  As states have started 
+removing policies, I need to update them.  
+
+```{r Rolling averages, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Do 5-day rolling average for pos, neg, tests, totalTests, deaths- I could just do this all in the last few mutate commands with lags and leads embedded, but this shows steps
+state<-state %>%
+  arrange(state, NewDate) %>%
+  group_by(state) %>%
+  mutate(posRoll= (lag(positive, 1)+ lag(positive, 2) + positive + lead(positive, 1) + lead(positive, 2))/5)%>%
+  mutate(negRoll= (lag(negative, 1)+ lag(negative, 2) + negative + lead(negative, 1) + lead(negative, 2))/5)%>%
+  mutate(testRoll= (lag(totalTestResults, 1)+ lag(totalTestResults, 2) + totalTestResults + lead(totalTestResults, 1) + lead(totalTestResults, 2))/5)%>%
+  mutate(deathRoll= (lag(death, 1)+ lag(death, 2) + death + lead(death, 1) + lead(death, 2))/5)%>%
+  ungroup()
+
+```
+
+
+```{r Outcome variables, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Do computations
+state<-state %>%
+  #Per cap on main ones
+  mutate(PosPerCap= (posRoll*10000/Pop19))%>% #Create per capita terms for positive cases
+  mutate(NegPerCap= negRoll*10000/(testRoll)) %>% #Create per capita for those negative. 
+  mutate(TestPerCap= testRoll*10000/Pop19) %>% # See how much each state is testing
+  mutate(DeathPerCap= deathRoll*10000/Pop19) %>% #Create death per capita
+  
+  #Fatality rate is important
+  mutate(FatalityRate= deathRoll/posRoll) %>% #This is how we calculated deathRoll
+  
+  #New cases for each
+  mutate(NewPos= posRoll-lag(posRoll, 1)) %>% #New confirmed cases
+  mutate(NewNeg= negRoll-lag(negRoll, 1)) %>% #New confirmed cases
+  mutate(NewTest= testRoll-lag(testRoll, 1)) %>% #New tests
+  mutate(NewDeath= deathRoll-lag(deathRoll, 1)) %>% #New confirmed cases
+
+  ##Let's do some lagging, because sometimes it takes a while for effects to show up. 
+  #To do this we need to sort and then group  by state
+  arrange(state, NewDate) %>% #To be careful, I arrange by state and date
+  group_by(state) %>% #To look at % change, I need to first group by state
+  
+  #Let's lag by 21 days to see the relationship between a new positive case and a new death
+  mutate(NewPosLag21= lag(NewPos, 21)) %>% #Again, amount of time to death on average.
+  
+  #Sometimes we want Pct Change
+  mutate(PctChPerCapPos= (posRoll-lag(posRoll)/lag(posRoll))) %>%
+  mutate(PctChPerCapNeg= (negRoll-lag(negRoll)/lag(negRoll))) %>%
+  mutate(PctChPerCapTest= (testRoll-lag(testRoll)/lag(testRoll))) %>%
+  mutate(PctChPerCapDeath= (deathRoll-lag(deathRoll)/lag(deathRoll))) 
+
+```
+
+
+```{r Policy variables 1, message=FALSE, warning=FALSE, include=FALSE}
+
+#Eric - added in the "so far" unchanging state factors from Excel. Need to do this work by state.
+
+state<-state %>%
+#Kaiser and NCSL from APPAM Slack
+
+#Create policyresponse variables  
+  mutate(ClosedSchool=0)%>%
+  mutate(ClosedDayCares=0) %>%
+  mutate(ClosedNursing=0) %>%
+  mutate(ClosedNonEssential=0) %>%
+  mutate(ClosedRestExceptTakeout=0) %>%
+  mutate(ClosedGyms=0) %>%
+  mutate(ClosedMovies=0) %>%
+  mutate(FrozeEvictions=0)%>%
+  
+#Kaiser Family Data
+  mutate(Stay.Home=0) 
+
+```
+
+```{r Policy by state 2, message=FALSE, warning=FALSE, include=FALSE}
+  
+#May need to first do a select function and then a join function
+AK<-state %>%
+  filter(state=="AK")%>%
+#AK Bans
+  mutate(ClosedSchool=ifelse(date>20200315,1,0))%>%
+  mutate(ClosedDayCares=0) %>%
+  mutate(ClosedNursing=ifelse(date>20200314,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>20200328,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200317, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200317, 1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200328, 1,0))
+
+```
+
+
+```{r Policy by state 3, message=FALSE, warning=FALSE, include=FALSE}
+
+AL<-state %>%
+  filter(state=="AL") %>%
+#AL Bans
+  mutate(ClosedSchool=ifelse(date>20200317,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>20200319,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>20200318,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>20200327,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200318,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200327, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200327, 1,0)) %>%
+  mutate(FrozeEvictions=0) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200404, 1,0)) 
+
+```
+
+```{r Policy by state AR, echo=TRUE, message=FALSE, warning=FALSE}
+
+AR<-state %>%
+  filter(state=="AR") %>%
+  #AR Bans
+  mutate(ClosedSchool=ifelse(date>20200316,1,0))%>%
+  mutate(ClosedDayCares=0) %>%
+  mutate(ClosedNursing=ifelse(date>20200312,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200319,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200319, 1,0)) %>%
+  mutate(ClosedMovies=0) %>%
+  mutate(FrozeEvictions=0) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=0)
+  
+```
+
+```{r Policy by state AZ, message=FALSE, warning=FALSE, include=FALSE}
+
+AZ<-state %>%
+  filter(state=="AZ") %>%
+  #AL Bans
+  mutate(ClosedSchool=ifelse(date>20200317,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>20200316,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>20200312,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>20200327,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200319,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200319, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200319, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>20200323,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200331, 1,0))
+
+CA<-state %>%
+  filter(state=="CA") %>%
+  mutate(ClosedSchool=ifelse(date>20200319,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>20200319,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>20200319,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200319,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200319, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200319, 1,0)) %>%
+
+#Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200319, 1,0))
+
+
+CO<- state %>%
+  filter(state=="CO")%>%
+  #CO Bans
+  mutate(ClosedSchool=ifelse(date>20200322,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>20200311,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>20200325,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200316, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200316, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>20200319,1,0))  %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200326, 1,0))
+  
+CT<- state %>%
+  filter(state=="CT")%>%
+  #CT Bans
+  mutate(ClosedSchool=ifelse(date>20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>20200308,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>20200322,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200315,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200315, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200315, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>20200316,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200323, 1,0))
+
+DC<- state %>%
+  filter(state=="DC")%>%
+  #CT Bans
+  mutate(ClosedSchool=ifelse(date>20200315,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200315,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200316, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200316, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>20200314,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200401, 1,0))
+
+
+DE<-state %>%
+  filter(state=="DE")%>%
+  #DE Bans
+  mutate(ClosedSchool=ifelse(date>20200315,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>20200405,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>20200323,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200315,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200318, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200318, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>20200324,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200324, 1,0))
+
+
+FL<-state %>%
+  filter(state=="FL") %>%
+  #FL Bans
+  mutate(ClosedSchool=ifelse(date>20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>20200314,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200319,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200319, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200319, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>20200401,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200401, 1,0))
+
+
+GA<-state %>%
+  filter(state=="GA") %>%
+  #GA Bans
+  mutate(ClosedSchool=ifelse(date>20200317,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>20200402,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>20200402,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>20200402, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>20200402, 1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200403, 1,0))
+
+
+HI<-state %>%
+  filter(state=="HI") %>%
+  #HI Bans
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200317,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200317, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200317,1,0))  %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200325, 1,0))
+
+IA<-state %>%
+  filter(state=="IA") %>%
+  #IA Bans
+  mutate(ClosedSchool=ifelse(date>=20200402,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200326,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200317, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200317, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200322,1,0)) %>% 
+
+  #Kaiser Data
+  mutate(Stay.Home=0)
+  
+ID<-state %>%
+  filter(state=="ID") %>%
+  #ID Bans
+  mutate(ClosedSchool=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200325,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200325,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200325, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200325, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200326,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200325, 1,0))
+
+
+IL<-state %>%
+  filter(state=="IL") %>%
+  #IL Bans
+  mutate(ClosedSchool=ifelse(date>=20200317,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200323,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>=20200321,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200321, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200321, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200321,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200321, 1,0))
+
+IN<-state %>%
+  filter(state=="IN") %>%
+  #IN Bans
+  mutate(ClosedSchool=ifelse(date>=20200319,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200324, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200325, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200319,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200324, 1,0))
+
+
+KS<-state %>%
+  filter(state=="KS") %>%
+  #KS Bans
+  mutate(ClosedSchool=ifelse(date>=20200317,1,0))%>%
+  mutate(FrozeEvictions=ifelse(date>=20200317,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200330, 1,0))
+
+
+KY<-state %>%
+  filter(state=="KY") %>%
+  #KY Bans
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200323,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>=20200326,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200318, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200318, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200326,1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200326, 1,0))
+
+
+LA<-state %>%
+  filter(state=="LA") %>%
+  #LA Bans
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200312,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200317, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200317, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200316,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200323, 1,0))
+
+
+MA<-state %>%
+  filter(state=="MA") %>%
+  #MA Bans
+  mutate(ClosedSchool=ifelse(date>=20200317,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200323,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>=20200312,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200317, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200317, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200316,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200324, 1,0))
+
+
+MD<-state %>%
+  filter(state=="MD") %>%
+  #MD Bans
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200330,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200316, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200316, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200316,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200330, 1,0))
+
+
+ME<-state %>%
+  filter(state=="ME") %>%
+  #ME Bans
+  mutate(ClosedSchool=ifelse(date>=20200402,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200325,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200318,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200325, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200325, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200318,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200402, 1,0))
+
+MI<-state %>%
+  filter(state=="MI") %>%
+  #MI Bans
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200324,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>=20200314,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200316, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200316, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200320,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200324, 1,0))
+
+
+MN<-state %>%
+  filter(state=="MN") %>%
+  #MN Bans
+  mutate(ClosedSchool=ifelse(date>=20200318,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200328,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200317, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200317, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200323,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200327, 1,0))
+
+MO<-state %>%
+  filter(state=="MO") %>%
+  #MO Bans
+  mutate(ClosedSchool=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200406,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200323,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200406, 1,0))
+
+
+
+MS<-state %>%
+  filter(state=="MS") %>%
+  #MS Bans
+  mutate(ClosedSchool=ifelse(date>=20200320,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200324,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200324, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200324, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200331,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200403, 1,0))
+
+MT<-state %>%
+  filter(state=="MT") %>%
+  #MT Bans
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200315,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200328,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200320,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200320, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200320, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200330,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200328, 1,0))
+
+NC<-state %>%
+  filter(state=="NC") %>%
+  #NC Bans
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200330,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200325, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200325, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200331,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200330, 1,0))
+
+
+ND<-state %>%
+  filter(state=="ND") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200406,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200320,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200320, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200320, 1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=0)
+
+
+NE<-state %>%
+  filter(state=="NE") %>%
+  mutate(ClosedSchool=ifelse(date>=20200403,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200403,1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200325,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=0)
+
+
+NH<-state %>%
+  filter(state=="NH") %>%
+  mutate(ClosedSchool=ifelse(date>=20200317,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200323,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>=20200312,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200317, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200317, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200316,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200327, 1,0))
+
+NJ<-state %>%
+  filter(state=="NJ") %>%
+  mutate(ClosedSchool=ifelse(date>=20200318,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200318,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>=20200321,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200316, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200316, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200319,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200321, 1,0))
+
+NM<-state %>%
+  filter(state=="NM") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200313,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200319,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200319, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200319, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200324,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200324, 1,0))
+
+NV<-state %>%
+  filter(state=="NV") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200321,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200321,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200321, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200321, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200324,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200401, 1,0))
+
+NY<-state %>%
+  filter(state=="NY") %>%
+  mutate(ClosedSchool=ifelse(date>=20200318,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200313,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200322,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200316, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200316, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200322,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200322, 1,0))
+
+OH<-state %>%
+  filter(state=="OH") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200326,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>=20200311,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200315,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200317, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200317, 1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200323, 1,0))
+
+
+OK<-state %>%
+  filter(state=="OK") %>%
+  mutate(ClosedSchool=ifelse(date>=20200317,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200401,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200401,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200401, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200401, 1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=0)
+
+
+OR<-state %>%
+  filter(state=="OR") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200325,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>=20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200324, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200324, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200322,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200323, 1,0))
+
+
+PA<-state %>%
+  filter(state=="PA") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>=20200317,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200319,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200319,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200319, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200319, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200320,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200401, 1,0))
+
+RI<-state %>%
+  filter(state=="RI") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>=20200313,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200330,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200323, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200323, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200319,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200328, 1,0))
+
+
+SC<-state %>%
+  filter(state=="SC") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200315,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200401,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200318,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200401, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200401, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200317,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200407, 1,0))
+
+
+SD<-state %>%
+  filter(state=="SD") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=0)
+
+
+TN<-state %>%
+  filter(state=="TN") %>%
+  mutate(ClosedSchool=ifelse(date>=20200320,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200401,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200323,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200323, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200323, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200325,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200331, 1,0))
+
+
+TX<-state %>%
+  filter(state=="TX") %>%
+  mutate(ClosedSchool=ifelse(date>=20200323,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200321,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200331,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200321,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200321, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200321, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200319,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200402, 1,0))
+
+
+UT<-state %>%
+  filter(state=="UT") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200319,1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200402,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=0)
+
+
+VA<-state %>%
+  filter(state=="VA") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200325,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200325, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200325, 1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200330, 1,0))
+
+
+VT<-state %>%
+  filter(state=="VT") %>%
+  mutate(ClosedSchool=ifelse(date>=20200318,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200318,1,0)) %>%
+  mutate(ClosedNursing=ifelse(date>=20200313,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200325,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200323, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200325, 1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200325, 1,0))
+
+
+WA<-state %>%
+  filter(state=="RI") %>%
+  mutate(ClosedSchool=ifelse(date>=20200317,1,0))%>%
+  mutate(ClosedNursing=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200325,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200316,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200316, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200316, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200318,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200323, 1,0))
+
+
+WI<-state %>%
+  filter(state=="WI") %>%
+  mutate(ClosedSchool=ifelse(date>=20200319,1,0))%>%
+  mutate(ClosedNonEssential=ifelse(date>=20200325,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200317,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200325, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200325, 1,0)) %>%
+  mutate(FrozeEvictions=ifelse(date>=20200327,1,0))%>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200325, 1,0))
+
+
+WV<-state %>%
+  filter(state=="WV") %>%
+  mutate(ClosedSchool=ifelse(date>=20200316,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200326,1,0)) %>%
+  mutate(ClosedNonEssential=ifelse(date>=20200324,1,0))%>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200318,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200319, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200324, 1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200324, 1,0))
+
+
+WY<-state %>%
+  filter(state=="WY") %>%
+  mutate(ClosedSchool=ifelse(date>=20200319,1,0))%>%
+  mutate(ClosedDayCares=ifelse(date>=20200319,1,0)) %>%
+  mutate(ClosedRestExceptTakeout=ifelse(date>=20200319,1,0)) %>%
+  mutate(ClosedGyms=ifelse(date>=20200319, 1,0)) %>%
+  mutate(ClosedMovies=ifelse(date>=20200319, 1,0)) %>% 
+  
+  #Kaiser Data
+  mutate(Stay.Home=ifelse(date>20200328, 1,0))
+
+
+```
+
+```{r Aggregations on States, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Append data for each state
+AllStates<- rbind(AK, AL, AR, AZ, CA, CO, CT, DC, DE, FL, GA, HI, IA, ID,
+               IL, IN, KS, KY, LA, MA, MD, ME, MI, MN, MO, MS, MT, NC,
+               ND, NE, NH, NJ, NM, NV, NY, OH, OK, OR, PA, RI, SC, SD,
+               TN, TX, UT, VA, VT, WA, WI, WV, WY)
+
+#Exclude NY
+AllstateNoNY<-rbind(AK, AL, AR, AZ, CA, CO, CT, DC, DE, FL, GA, HI, IA, ID,
+                                IL, IN, KS, KY, LA, MA, MD, ME, MI, MN, MO, MS, MT, NC,
+                                ND, NE, NH, NJ, NM, NV, OH, OK, OR, PA, RI, SC, SD,
+                                TN, TX, UT, VA, VT, WA, WI, WV, WY)
+
+
+
+#Replace some variables with their average.
+
+# mutate missing values because only stored for earlier dates
+AllStates<-AllStates %>%
+  group_by(state) %>%
+  arrange(state, NewDate) %>%
+  mutate(QuarantineTravelers= replace(QuarantineTravelers, is.na(QuarantineTravelers), median(QuarantineTravelers, na.rm = TRUE)))%>%
+  mutate(StayHomeOrd= replace(StayHomeOrd, is.na(StayHomeOrd), median(StayHomeOrd, na.rm = TRUE)))%>%
+  mutate(Gatherings= replace(Gatherings, is.na(Gatherings), median(Gatherings, na.rm = TRUE)))%>%
+  mutate(Religious= replace(Religious, is.na(Religious), median(Religious, na.rm = TRUE)))%>%
+  mutate(AlcoholOpen= replace(AlcoholOpen, is.na(AlcoholOpen), median(AlcoholOpen, na.rm = TRUE)))%>%
+  mutate(FirearmsOpen= replace(FirearmsOpen, is.na(FirearmsOpen), median(FirearmsOpen, na.rm = TRUE)))%>%
+  mutate(PopDensity= replace(PopDensity, is.na(PopDensity), median(PopDensity, na.rm = TRUE)))%>%
+  mutate(SqMiles= replace(SqMiles, is.na(SqMiles), median(SqMiles, na.rm = TRUE)))%>%
+  mutate(UnempPct= replace(UnempPct, is.na(UnempPct), median(UnempPct, na.rm = TRUE)))%>%
+  mutate(PovertyPct= replace(PovertyPct, is.na(PovertyPct), median(PovertyPct, na.rm = TRUE)))%>%
+  mutate(RiskPct= replace(RiskPct, is.na(RiskPct), median(RiskPct, na.rm = TRUE))) %>%
+  mutate(AllDeaths= replace(AllDeaths, is.na(AllDeaths), median(AllDeaths, na.rm = TRUE)))
+
+##State mapping, need lat and long by state.
+
+AllStates$location_name <- tolower(AllStates$location_name)
+
+AllStatesWithMap<- left_join(us_states, AllStates, by=c("region" = "location_name"))
+  
+```
+
+
+
+```{r Mapping, echo=TRUE, message=FALSE, warning=FALSE}
+
+#Map 1 with fatality rate
+p0a <- ggplot(data = subset(AllStatesWithMap),
+             aes(x = long, y = lat, group = group, fill = posRoll))
+
+p1a <- p0a + geom_polygon(color = "gray90", size = 0.05) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45) 
+
+p2a <- p1a + scale_fill_gradient2(low = "gray",
+                                mid = scales::muted("purple"),
+                                high = "blue", breaks= c(0, 350, 700)) +facet_wrap(~ NewDate)+
+  labs(title = "New COVID-19 confirmed cases by Date") 
+p3a<-p2a + theme_map() + labs(fill = "Cases", caption = "Created by Eric Stokan, Source= www.covidtracking.com")
+
+p3a
+
+warnings()
+
+```
+
+You need to install the geofacet package to create the following map.  This can be done here: https://hafen.github.io/geofacet/
+
+install.packages("geofacet")
+or from github:
+devtools::install_github("hafen/geofacet")
+
+
+```{r Mapping2, echo=TRUE, message=FALSE, warning=FALSE}
+library(geofacet)
+AllStates2<-AllStates
+
+ggplot(AllStates, aes(y=TestPerCap, x=date, fill = TestPerCap)) +
+  geom_smooth() +
+  theme_bw() +
+  facet_geo(~ state) +
+    scale_x_continuous(labels = function(x) paste0("'", substr(x, 3, 4))) +
+    labs(title="COVID Test Per Capita Rate (per 10,000) by State (5-day Rolling Average)", 
+         x= "Date",
+         y= "#Test Per Capita Rate Cases by State",
+       caption= "Created by Eric Stokan, Data Source: Covidtracking.com")+
+  theme(strip.text.x = element_text(size = 6))+
+  theme(axis.ticks.x=element_blank(),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank())+
+        scale_y_continuous(breaks = c(0, 1000))
+
+```
