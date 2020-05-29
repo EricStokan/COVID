@@ -1,0 +1,8 @@
+This is my first Git Hub repository, so I will make a lot of mistakes.  Please feel free to let me know which need correcting.  
+In this file, I will include my R markdown file which pulls COVID-19 data from two sources: Johns Hopkins County API and Covidtracking.com
+
+I do some work to include state-level policy actions to mitigate the spread of the virus (such as stay at home policies).  I will update
+with information regarding when those policies were lifted.  I will supplement with County-level policies in the future.
+
+My Rmarkdown file is fairly well contained and should pull the sources of information; however, you may need to register with the Hopkins
+AWS site for it to work.
